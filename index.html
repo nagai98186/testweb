@@ -1,66 +1,79 @@
+<!--以下を参考に-->
+<!--https://teratail.com/questions/151938 -->
 <!DOCTYPE html>
 <html>
 
 <head>
-    <meta charset="UTF-8">
-    <title>Web Speech API</title>
-    <script>
-        var flag_speech = 0;
-
-        function vr_function() {
-            window.SpeechRecognition = window.SpeechRecognition || webkitSpeechRecognition;
-            var recognition = new webkitSpeechRecognition();
-            recognition.lang = 'ja';
-            recognition.interimResults = true;
-            recognition.continuous = true;
-
-            recognition.onsoundstart = function() {
-                document.getElementById('status').innerHTML = "認識中";
-            };
-            recognition.onnomatch = function() {
-                document.getElementById('status').innerHTML = "もう一度試してください";
-            };
-            recognition.onerror = function() {
-                document.getElementById('status').innerHTML = "エラー";
-                if(flag_speech == 0)
-                  vr_function();
-            };
-            recognition.onsoundend = function() {
-                document.getElementById('status').innerHTML = "停止中";
-                  vr_function();
-            };
-
-            recognition.onresult = function(event) {
-                var results = event.results;
-                for (var i = event.resultIndex; i < results.length; i++) {
-                    if (results[i].isFinal)
-                    {
-                        document.getElementById('result_text').innerHTML = results[i][0].transcript;
-                        // results[i][0].confidence　で精度を出せる
-                        vr_function();
-                    }
-                    else
-                    {
-                        document.getElementById('result_text').innerHTML = "[途中経過] " + results[i][0].transcript;
-                        flag_speech = 1;
-                    }
-                }
-            }
-            flag_speech = 0;
-            document.getElementById('status').innerHTML = "start";
-            recognition.start();
-        }
-    </script>
+	<meta charset="UTF-8">
+	<title>Web Speech API</title>
+	
+	
+	<script>
+		var recognizing;
+		
+		init();
+		function init() {
+			// 変数とhtml内の連携
+			const recognitionState = document.querySelector("#recognitionState");
+			const confidence = document.querySelector("#recognitionState");
+			const resultText = document.querySelector("#resultText");
+			
+			// 音声認識の準備
+			window.SpeechRecognition = window.SpeechRecognition || webkitSpeechRecognition;
+			recognition = new webkitSpeechRecognition();
+			recognition.continuous = true;
+			recognition.lang = 'ja';
+			recognition.interimResults = true;
+			
+			// 関数の用意
+			recognition.onend = reset;
+			recognition.onresult = disp;
+			
+		}
+		// 音声認識出力関数
+		function disp(event) {
+			var results = event.results;
+			for (var i = event.resultIndex; i < results.length; ++i) {
+				if (results[i].isFinal) {
+					recognitionState.innerHTML = "認識終了";
+					confidence.innerHTML = results[i][0].confidence;
+					resultText.innerHTML = results[i][0].transcript;
+					//document.getElementById('textarea').value += results[i][0].transcript + "\n";
+				}
+				else{
+					recognitionState.innerHTML = "認識中";
+					confidence.innerHTML = results[i][0].confidence;
+					resultText.innerHTML = '<i style="color:#ddd;">' + results[i][0].transcript + '</i>';
+				}
+			}
+		}
+		// スタート関数
+		function start() {
+			init();
+			recognition.start();
+		}
+		// ストップ関数
+		function stop() {
+			recognition.onend = null;
+			recognition.stop();
+		}
+		// 停止したときの再スタート関数
+		function reset() { 
+			console.log("reset\n");
+			init();
+			recognition.start();
+		} 
+		recognition.onerror = function(event)  {
+			console.log('音声認識エラーが検出されました：' + event.error);
+		}
+	</script>
+	
 </head>
 
 <body>
-    <textarea id="result_text" cols="100" rows="10">
-    </textarea>
-    <br>
-    <textarea id="status" cols="100" rows="1">
-    </textarea>
-    <br>
-    <input type="button" onClick="vr_function();" value="音認開始">
+	<div id="recognitionState">認識表示</div>
+	<div id="confidence">信頼度表示</div>
+	<div id="resultText">結果表示</div>
+	<button id="start" onclick="start()">Start</button>
+	<button id="stop" onclick="stop()">Stop</button>
 </body>
-
-</html>
